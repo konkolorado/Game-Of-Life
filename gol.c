@@ -1,7 +1,7 @@
-"""
+/*
 Author: Uriel Mandujano
 C Implementation of Game of Life
-"""
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
