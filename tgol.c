@@ -1,6 +1,6 @@
 /*
 Author: Uriel Mandujano
-C Implementation of Game of Life
+Multi-threaded C Implementation of Game of Life
 */
 
 #include <stdio.h>
@@ -205,8 +205,11 @@ void validate_input(int argc, char** argv) {
     if (argc != 3) {
         usage();
     }
-    if ((isdigit(*argv[2]) == 0)) {
-        usage();
+    int len = strlen(argv[2]);
+    for (int i = 0; i < len; i++) {
+        if ((isdigit(argv[2][i]) == 0)) {
+            usage();
+        }
     }
     if (access(argv[1], F_OK) == -1) {
         usage();
