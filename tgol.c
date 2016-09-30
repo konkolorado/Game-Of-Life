@@ -9,7 +9,7 @@ C Implementation of Game of Life
 #include <ctype.h>
 #include <unistd.h>
 
-#include "gol.h"
+#include "tgol.h"
 
 int main(int argc, char **argv) {
     validate_input(argc, argv);
@@ -23,7 +23,6 @@ int main(int argc, char **argv) {
         sleep(1);
     }
     free_board(&board);
-    return 1;
 }
 
 void update_board(Board* b) {
@@ -203,7 +202,10 @@ void free_board(Board* b) {
 }
 
 void validate_input(int argc, char** argv) {
-    if (argc != 2) {
+    if (argc != 3) {
+        usage();
+    }
+    if ((isdigit(*argv[2]) == 0)) {
         usage();
     }
     if (access(argv[1], F_OK) == -1) {
@@ -260,7 +262,7 @@ void validate_input_file(char* filename) {
 
 void usage() {
     printf("Invalid program call\n");
-    printf("gol.c filename\n");
+    printf("gol.c filename num_threads\n");
     exit(EXIT_FAILURE);
 }
 
