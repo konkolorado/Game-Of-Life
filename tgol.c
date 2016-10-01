@@ -8,50 +8,91 @@ Multi-threaded C Implementation of Game of Life
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "tgol.h"
+
+Point* dead;
+int curr_death = 0;
+Point* alive;
+int curr_living = 0;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char **argv) {
     validate_input(argc, argv);
     validate_input_file(argv[1]);
+    int ntids = str_to_int(argv[2]);
 
     Board board;
     set_up_board(argv[1], &board);
     for (int i = 0; i < board.iterations; i++) {
         show_board(&board);
-        update_board(&board);
+        update_board(&board, ntids);
         sleep(1);
     }
     free_board(&board);
+    free(dead); free(alive);
 }
 
-void update_board(Board* b) {
-    Point dead[b->rows * b->cols];
-    int curr_death = 0;
-    Point alive[b->rows * b->cols];
-    int curr_living = 0;
+void update_board(Board* b, int nthids) {
+    dead = malloc( b->rows * b->cols * sizeof(Point));
+    alive = malloc( b->rows * b->cols * sizeof(Point));
+    pthread_t thread_ids[nthids];
+    int range = b->rows / nthids;
+    for (int i =0; i < nthids; i++) {
+        int bottom = i * range;
+        int top = bottom + range;
+        Range* args = malloc(sizeof *args);
+        args->max_i = top;
+        args->min_i = bottom;
+        args->b = b;
+        pthread_create( &thread_ids[i], NULL, &check_rows, args);
+    }
+    for(int i = 0; i < nthids; i++) {
+        pthread_join(thread_ids[i], NULL);
+    }
+    update_cells(b, dead, curr_death, alive, curr_living);
+    reset_lifes_deaths();
+}
 
-    for (int i = 0; i < b->rows; i++) {
+void* check_rows(void* args) {
+    Range* range = args;
+    Board* b = range->b;
+    int lowest_row = range->min_i;
+    int highest_row = range->max_i;
+    for (int i = lowest_row; i < highest_row; i++) {
         for (int j = 0; j < b->cols; j++) {
             int live_neighbors = calculate_live_neighbors(b, i, j);
             Point curr_point = make_point(i, j);
 
             if (b->board[i][j] == 'X') {
                 if (live_neighbors < 2 || live_neighbors > 3) {
+                    pthread_mutex_lock(&mutex);
                     dead[curr_death++] = curr_point;
+                    pthread_mutex_unlock(&mutex);
                 }
                 else {
+                    pthread_mutex_lock(&mutex);
                     alive[curr_living++] = curr_point;
+                    pthread_mutex_unlock(&mutex);
                 }
             }
             else {
                 if (live_neighbors == 3) {
+                    pthread_mutex_lock(&mutex);
                     alive[curr_living++] = curr_point;
+                    pthread_mutex_unlock(&mutex);
                 }
             }
         }
     }
-    update_cells(b, dead, curr_death, alive, curr_living);
+    free(range);
+    return 0;
+}
+
+void reset_lifes_deaths() {
+    curr_death = 0;
+    curr_living = 0;
 }
 
 Point make_point(int i, int j) {
@@ -277,4 +318,10 @@ void file_format() {
     printf("Num following coordinate pairs\n");
     printf("coordinate1x coordinate1y\n");
     exit(EXIT_FAILURE);
+}
+
+int str_to_int(char* str) {
+    int num;
+    sscanf(str, "%d", &num);
+    return num;
 }
