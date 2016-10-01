@@ -43,10 +43,17 @@ void update_board(Board* b, int nthids) {
         int bottom = i * range;
         int top = bottom + range;
         Range* args = malloc(sizeof *args);
-        args->max_i = top;
+        if (i == nthids - 1) {
+            args->max_i = b->rows;
+        }
+        else {
+            args->max_i = top;
+        }
+
         args->min_i = bottom;
         args->b = b;
         pthread_create( &thread_ids[i], NULL, &check_rows, args);
+        //free(args);
     }
     for(int i = 0; i < nthids; i++) {
         pthread_join(thread_ids[i], NULL);
@@ -86,7 +93,6 @@ void* check_rows(void* args) {
             }
         }
     }
-    free(range);
     return 0;
 }
 
