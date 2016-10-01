@@ -44,6 +44,9 @@ void* check_rows(void* args);
 /* Clears the life/death arrays and their counts */
 void reset_lifes_deaths();
 
+/* Prepares the Range struct with proper values for use in thread */
+Range* prepare_thread_args(Board* b, int max_thds, int curr_thd, int range);
+
 /* Updates the board positions using nthids threads */
 void update_board(Board* board, int nthids);
 
@@ -75,5 +78,5 @@ void usage();
 /* Writes to stdout proper file format */
 void file_format();
 
-/* Converts a char array into an int */
-int str_to_int(char* str);
+/* Converts a char array from the command line into an int */
+int arg_to_int(char* str);

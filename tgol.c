@@ -9,19 +9,20 @@ Multi-threaded C Implementation of Game of Life
 #include <ctype.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <time.h>
 
 #include "tgol.h"
 
 Point* dead;
-int curr_death = 0;
 Point* alive;
+int curr_death = 0;
 int curr_living = 0;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char **argv) {
     validate_input(argc, argv);
     validate_input_file(argv[1]);
-    int ntids = str_to_int(argv[2]);
+    int ntids = arg_to_int(argv[2]);
 
     Board board;
     set_up_board(argv[1], &board);
@@ -31,29 +32,17 @@ int main(int argc, char **argv) {
         sleep(1);
     }
     free_board(&board);
-    free(dead); free(alive);
 }
 
 void update_board(Board* b, int nthids) {
     dead = malloc( b->rows * b->cols * sizeof(Point));
     alive = malloc( b->rows * b->cols * sizeof(Point));
+
     pthread_t thread_ids[nthids];
     int range = b->rows / nthids;
     for (int i =0; i < nthids; i++) {
-        int bottom = i * range;
-        int top = bottom + range;
-        Range* args = malloc(sizeof *args);
-        if (i == nthids - 1) {
-            args->max_i = b->rows;
-        }
-        else {
-            args->max_i = top;
-        }
-
-        args->min_i = bottom;
-        args->b = b;
+        Range* args = prepare_thread_args(b, nthids, i, range);
         pthread_create( &thread_ids[i], NULL, &check_rows, args);
-        //free(args);
     }
     for(int i = 0; i < nthids; i++) {
         pthread_join(thread_ids[i], NULL);
@@ -62,11 +51,30 @@ void update_board(Board* b, int nthids) {
     reset_lifes_deaths();
 }
 
+Range* prepare_thread_args(Board* b, int max_thds, int curr_thd, int range) {
+    int bottom = curr_thd * range;
+    int top = bottom + range;
+    Range* args = malloc(sizeof *args);
+
+    // Check if this is the last thread, in which case it should
+    // finish checking what's left of the board
+    if (curr_thd == max_thds - 1) {
+        args->max_i = b->rows;
+    }
+    else {
+        args->max_i = top;
+    }
+    args->min_i = bottom;
+    args->b = b;
+    return args;
+}
+
 void* check_rows(void* args) {
     Range* range = args;
     Board* b = range->b;
     int lowest_row = range->min_i;
     int highest_row = range->max_i;
+
     for (int i = lowest_row; i < highest_row; i++) {
         for (int j = 0; j < b->cols; j++) {
             int live_neighbors = calculate_live_neighbors(b, i, j);
@@ -93,12 +101,14 @@ void* check_rows(void* args) {
             }
         }
     }
+    free(args);
     return 0;
 }
 
 void reset_lifes_deaths() {
     curr_death = 0;
     curr_living = 0;
+    free(dead); free(alive);
 }
 
 Point make_point(int i, int j) {
@@ -326,8 +336,13 @@ void file_format() {
     exit(EXIT_FAILURE);
 }
 
-int str_to_int(char* str) {
+int arg_to_int(char* str) {
     int num;
     sscanf(str, "%d", &num);
+    if (num < 1 || num > 10) {
+        printf("Failure - num threads out of range\n");
+        printf("Try threads 1-10");
+        exit(EXIT_FAILURE);
+    }
     return num;
 }
