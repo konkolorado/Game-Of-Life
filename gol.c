@@ -8,6 +8,7 @@ C Implementation of Game of Life
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "gol.h"
 
